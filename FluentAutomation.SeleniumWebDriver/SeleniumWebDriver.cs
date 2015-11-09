@@ -245,7 +245,7 @@ namespace FluentAutomation
                     driverPath = EmbeddedResources.UnpackFromAssembly("chromedriver.exe", Assembly.GetAssembly(typeof(SeleniumWebDriver)));
 
                     var chromeService = ChromeDriverService.CreateDefaultService(Path.GetDirectoryName(driverPath));
-                    chromeService.SuppressInitialDiagnosticInformation = true;
+                   // chromeService.SuppressInitialDiagnosticInformation = true;
 
                     var chromeOptions = new ChromeOptions();
                     chromeOptions.AddArgument("--log-level=3");

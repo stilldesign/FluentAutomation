@@ -5,111 +5,117 @@ using System.Text;
 using System.Threading.Tasks;
 using FluentAutomation.Interfaces;
 using FluentAutomation.Exceptions;
+using System.Collections.Concurrent;
+using System.Threading;
 
 namespace FluentAutomation
 {
-    /// <summary>
-    /// FluentTest - To be extended by tests targeting FluentAutomation. In the constructor, a user should call an appropriate bootstrap function from a FluentAutomation Provider.
-    /// </summary>
-    public class FluentTest : BaseFluentTest
-    {
-        public static bool IsMultiBrowserTest = false;
+	/// <summary>
+	/// FluentTest - To be extended by tests targeting FluentAutomation. In the constructor, a user should call an appropriate bootstrap function from a FluentAutomation Provider.
+	/// </summary>
+	public class FluentTest : BaseFluentTest
+	{
+		public static bool IsMultiBrowserTest = false;
 
-        private static object providerInstance = null;
+		//private static object providerInstance = null;
+		private static ConcurrentDictionary<int, object> providerInstances = new ConcurrentDictionary<int, object>();
 
-        public static object ProviderInstance
-        {
-            get
-            {
-                if (IsMultiBrowserTest)
-                    throw new FluentException("Accessing the Provider while using multiple browsers in a single test is unsupported.");
+		public static object ProviderInstance
+		{
+			get
+			{
+				if (IsMultiBrowserTest)
+					throw new FluentException("Accessing the Provider while using multiple browsers in a single test is unsupported.");
 
-                return providerInstance;
-            }
+				if (!providerInstances.ContainsKey(Thread.CurrentThread.ManagedThreadId))
+					return null;
 
-            set
-            {
-                providerInstance = value;
-            }
-        }
+				return providerInstances[Thread.CurrentThread.ManagedThreadId];
+			}
 
-        public object Provider
-        {
-            get
-            {
-                if (FluentTest.ProviderInstance == null)
-                    throw new FluentException("Provider is not available yet. Open a page with I.Open to create the provider.");
+			set
+			{
+				providerInstances[Thread.CurrentThread.ManagedThreadId] = value;
+			}
+		}
 
-                return FluentTest.ProviderInstance;
-            }
-        }
+		public object Provider
+		{
+			get
+			{
+				if (FluentTest.ProviderInstance == null)
+					throw new FluentException("Provider is not available yet. Open a page with I.Open to create the provider.");
 
-        private FluentSession session = null;
-        public FluentSession Session
-        {
-            get
-            {
-                if (session == null)
-                {
-                    session = new FluentSession();
-                    session.RegisterSyntaxProvider<ActionSyntaxProvider>();
-                }
+				return FluentTest.ProviderInstance;
+			}
+		}
 
-                return session;
-            }
-        }
+		private FluentSession session = null;
+		public FluentSession Session
+		{
+			get
+			{
+				if (session == null)
+				{
+					session = new FluentSession();
+					session.RegisterSyntaxProvider<ActionSyntaxProvider>();
+				}
 
-        /// <summary>
-        /// Actions - Fluent's action functionality.
-        /// </summary>
-        public IActionSyntaxProvider I
-        {
-            get
-            {
-                var provider = SyntaxProvider as IActionSyntaxProvider;
-                if (provider == null || provider.IsDisposed())
-                {
-                    this.Session.BootstrapTypeRegistration(FluentSettings.Current.ContainerRegistration);
-                    SyntaxProvider = this.Session.GetSyntaxProvider();
-                }
+				return session;
+			}
+		}
 
-                // set the CommandProvider settings each time I is accessed, this allows reversion of
-                // per step configuration values
-                var actionSyntaxProvider = (ActionSyntaxProvider)SyntaxProvider;
-                actionSyntaxProvider.WithConfig(FluentSettings.Current);
+		/// <summary>
+		/// Actions - Fluent's action functionality.
+		/// </summary>
+		public IActionSyntaxProvider I
+		{
+			get
+			{
+				var provider = SyntaxProvider as IActionSyntaxProvider;
+				if (provider == null || provider.IsDisposed())
+				{
+					this.Session.BootstrapTypeRegistration(FluentSettings.Current.ContainerRegistration);
+					SyntaxProvider = this.Session.GetSyntaxProvider();
+				}
 
-                return SyntaxProvider as IActionSyntaxProvider;
-            }
-        }
+				// set the CommandProvider settings each time I is accessed, this allows reversion of
+				// per step configuration values
+				var actionSyntaxProvider = (ActionSyntaxProvider)SyntaxProvider;
+				actionSyntaxProvider.WithConfig(FluentSettings.Current);
 
-        public FluentConfig Config
-        {
-            get
-            {
-                return FluentConfig.Current;
-            }
-        }
+				return SyntaxProvider as IActionSyntaxProvider;
+			}
+		}
 
-        public WithSyntaxProvider With
-        {
-            get
-            {
-                return new WithSyntaxProvider(I);
-            }
-        }
-    }
+		public FluentConfig Config
+		{
+			get
+			{
+				return FluentConfig.Current;
+			}
+		}
 
-    public class FluentTest<T> : FluentTest where T : class
-    {
-        public new T Provider
-        {
-            get
-            {
-                if (FluentTest.ProviderInstance == null)
-                    throw new FluentException("Provider is not available yet. Open a page with I.Open to create the provider.");
+		public WithSyntaxProvider With
+		{
+			get
+			{
+				return new WithSyntaxProvider(I);
+			}
+		}
+	}
 
-                return FluentTest.ProviderInstance as T;
-            }
-        }
-    }
+	public class FluentTest<T> : FluentTest where T : class
+	{
+		public new T Provider
+		{
+			get
+			{
+				if (FluentTest.ProviderInstance == null)
+					throw new FluentException("Provider is not available yet. Open a page with I.Open to create the provider.");
+
+				return FluentTest.ProviderInstance as T;
+			}
+		}
+	}
 }
