@@ -249,6 +249,7 @@ namespace FluentAutomation
 
                     var chromeOptions = new ChromeOptions();
                     chromeOptions.AddArgument("--log-level=3");
+					chromeOptions.AddArgument("no-sandbox");
 
                     return new Func<IWebDriver>(() => new OpenQA.Selenium.Chrome.ChromeDriver(chromeService, chromeOptions, commandTimeout));
                 case Browser.PhantomJs:
